@@ -65,6 +65,27 @@ class Database
         return $vRetour;
     }
 
+    public function put($table, $id, $params)
+    {
+        $vRetour = false;
+        try {
+            $query = "UPDATE $table SET ";
+            foreach ($params as $key => $values) {
+                $query .= " $key = ";
+                $query .= ":$key,";
+            }
+            $query = substr($query, 0, -1) . " WHERE id = $id;";
+            echo $query;
+            $req = $this->connection->prepare($query);
+            $req->execute($params);
+            $vRetour = true;
+        } catch (Exception $ex) {
+            echo "La modification a échoué : $ex";
+            $vRetour = false;
+        }
+        return $vRetour;
+    }
+
     public function post($table, $params)
     {
         bool:
@@ -76,6 +97,7 @@ class Database
                 $query .= ":$key,";
             }
             $query = substr($query, 0, -1) . ");";
+            echo $query;
             $req = $this->connection->prepare($query);
             $req->execute($params);
             $vRetour = true;

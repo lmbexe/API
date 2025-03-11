@@ -26,9 +26,8 @@ return function (App $app, Database $db) {
     });
 
     $app->post('/post/{table}', function (Request $request, Response $response, $args) use ($db) {
-        $table = $args["table"];
         $data = (array) $request->getParsedBody();
-        $responseData = $db->post($table, $data);
+        $responseData = $db->post($args["table"], $data);
         if ($responseData) {
             $response->getBody()->write("Accepted");
 
@@ -40,6 +39,16 @@ return function (App $app, Database $db) {
 
     $app->delete('/delete/{table}/{id}', function (Request $request, Response $response, $args) use ($db) {
         if ($db->deleteLigne($args['table'], $args['id'])) {
+            $response->getBody()->write("Accepted");
+        } else {
+            $response->getBody()->write("failed");
+        }
+        return $response;
+    });
+
+    $app->put('/put/{table}/{id}', function (Request $request, Response $response, $args) use ($db) {
+        $data = (array) $request->getParsedBody();
+        if ($db->put($args['table'], $args['id'], $data)) {
             $response->getBody()->write("Accepted");
         } else {
             $response->getBody()->write("failed");
