@@ -1,27 +1,4 @@
-créer les routes avec le get post etc
-créer la page pour le token
-
-value pour le post :
-
-personne : {
-"id": 27,
-"nom": "Dalton",
-"prenom": "Joe",
-"sexe": "H",
-"date_naiss": null,
-"date_deces": null,
-"ad1": null,
-"ad2": null,
-"cp": null,
-"ville": null,
-"tel_fixe": null,
-"tel_port": null,
-"mail": null
-}
-
-infirmiere : {
-"id": 27,
-"fichier_photo": null
-}
-
-value pour le delete :
+il faut pouvoir s'identifier
+il faut le token
+il faut pour une infirmière seulement voir ses visites plus si on ajoute l'id la visite avec cet id
+pour l'infirmière en chef pouvoir voir toute les visites des infirmières et si avec le nom de l'infirmière et l'id après pouvoir voir cette visite
