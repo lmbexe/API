@@ -121,5 +121,19 @@ class Database
             throw new Exception($e->getMessage());
         }
     }
+
+    public function loginExist($id, $mdp){
+        string: $exist = '';
+        try{
+            $query = "SELECT * FROM personne_login WHERE login = ? and mp = MD5(?)";
+            $req = $this->connection->prepare($query);
+            $req->execute([$id, $mdp]);
+            $exist =  $req->fetchAll(PDO::FETCH_ASSOC);
+        }
+        catch(Exception $ex){
+            echo "Erreur : $ex";
+        }
+        return $exist;
+    }
 }
 
