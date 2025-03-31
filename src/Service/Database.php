@@ -43,12 +43,47 @@ class Database
 
     public function getLigne($table, $id)
     {
-        $query = "SELECT * FROM $table WHERE id = ?";
+        try {
+            $query = "SELECT * FROM $table WHERE id = ?";
+            $req = $this->connection->prepare($query);
+            $req->execute([$id]);
+            return $req->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            echo "Error";
+        }
+
+    }
+
+    public function getVisitesPatient($id, $table)
+    {
+        try {
+            if ($table == 'patient') {
+                $para = 'id';
+            } else {
+                $para = 'patient';
+            }
+            $query = "SELECT * FROM $table WHERE $para = ?";
+            $req = $this->connection->prepare($query);
+            $req->execute([$id]);
+            return $req->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            echo "Error";
+        }
+
+    }
+
+    public function getVisitesInfirmiere($id, $table)
+    {
+        if ($table == 'infirmiere') {
+            $para = 'id';
+        } else {
+            $para = 'infirmiere';
+        }
+        $query = "SELECT * FROM $table WHERE $para = ?";
         $req = $this->connection->prepare($query);
         $req->execute([$id]);
         return $req->fetchAll(PDO::FETCH_ASSOC);
     }
-
     public function deleteLigne($table, $id)
     {
         bool:
@@ -122,18 +157,124 @@ class Database
         }
     }
 
-    public function loginExist($id, $mdp){
-        string: $exist = '';
-        try{
-            $query = "SELECT * FROM personne_login WHERE login = ? and mp = MD5(?)";
+    public function loginExist($login, $mdp)
+    {
+        try {
+            $query = "SELECT id FROM personne_login WHERE login = ? and mp = MD5(?)";
             $req = $this->connection->prepare($query);
-            $req->execute([$id, $mdp]);
-            $exist =  $req->fetchAll(PDO::FETCH_ASSOC);
-        }
-        catch(Exception $ex){
+            $req->execute([$login, $mdp]);
+            $result = $req->fetch(PDO::FETCH_ASSOC);
+
+
+            if ($result) {
+                return $result['id'];
+            } else {
+                return null;
+            }
+        } catch (Exception $ex) {
             echo "Erreur : $ex";
+            return null;
         }
-        return $exist;
+    }
+
+    public function checkId($id)
+    {
+
+        $vRetour = '';
+        try {
+            if ($this->isInfirmiereEnChef($id)) {
+                $vRetour = "infChef";
+            } elseif ($this->isInfirmiere($id)) {
+                $vRetour = "infirmiere";
+            }
+
+
+            if ($this->isAdmin($id)) {
+                $vRetour = "admin";
+            }
+            if ($this->isPatient($id)) {
+                $vRetour = "patient";
+            }
+
+
+        } catch (Exception $e) {
+            echo "erreur : $e";
+            $vRetour = "error";
+        }
+
+        return $vRetour;
+
+    }
+    public function isInfirmiere($id)
+    {
+        bool:
+        $vRetour = false;
+        try {
+            $query = "SELECT * FROM infirmiere where id = ?";
+            $req = $this->connection->prepare($query);
+            $req->execute([$id]);
+            if ($req->fetch(PDO::FETCH_ASSOC)) {
+                $vRetour = true;
+            }
+        } catch (Exception $e) {
+            echo "erreur : $e";
+            $vRetour = false;
+        }
+        return $vRetour;
+    }
+
+    public function isInfirmiereEnChef($id)
+    {
+        bool:
+        $vRetour = false;
+        try {
+            $query = "SELECT id FROM infirmiere where isChef = 1";
+            $req = $this->connection->prepare($query);
+            $req->execute();
+            if ($req->fetch(PDO::FETCH_ASSOC)['id'] == $id) {
+                $vRetour = true;
+            }
+        } catch (Exception $e) {
+            echo "erreur : $e";
+            $vRetour = false;
+        }
+        return $vRetour;
+    }
+
+    public function isAdmin($id)
+    {
+        bool:
+        $vRetour = false;
+        try {
+            $query = "SELECT * FROM administrateur where id = ?";
+            $req = $this->connection->prepare($query);
+            $req->execute([$id]);
+            if ($req->fetch(PDO::FETCH_ASSOC)) {
+                $vRetour = true;
+            }
+        } catch (Exception $e) {
+            echo "erreur : $e";
+            $vRetour = false;
+        }
+        return $vRetour;
+    }
+
+    public function isPatient($id)
+    {
+        bool:
+        $vRetour = false;
+        try {
+            $query = "SELECT * FROM patient where id = ?";
+            $req = $this->connection->prepare($query);
+            $req->execute([$id]);
+            if ($req->fetch(PDO::FETCH_ASSOC)) {
+                $vRetour = true;
+            }
+        } catch (Exception $e) {
+            echo "erreur : $e";
+            $vRetour = false;
+        }
+        return $vRetour;
     }
 }
 
