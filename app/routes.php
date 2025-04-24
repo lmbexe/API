@@ -12,15 +12,11 @@ use Psr\Http\Server\RequestHandlerInterface as RequestHandler;
 define('ACCES', [
     'admin' => [
         'visite',
-        'soins',
-        'personne',
         'patient',
         'infirmiere'
     ],
     'infChef' => [
         'visite',
-        'soins',
-        'personne',
         'patient',
         'infirmiere'
     ],
@@ -33,7 +29,6 @@ define('ACCES', [
         'patient'
     ]
 ]);
-
 
 define('JWT_SECRET', 'lmbexe');
 
@@ -68,7 +63,6 @@ $checkToken = function (Request $request, RequestHandler $handler) {
     return $handler->handle($request);
 };
 
-
 function createJWT($expTime, $id, $fonction)
 {
     $token = JWT::encode([
@@ -81,11 +75,33 @@ function createJWT($expTime, $id, $fonction)
 
 return function (App $app, Database $db) use ($checkToken) {
 
+    $app->post('/login', function (Request $request, Response $response, $args) use ($db) {
+        $data = (array) $request->getParsedBody();
 
-    $app->get('/', function (Request $request, Response $response, $args) {
-        $response->getBody()->write('Hello, World!');
+        if (is_null($data) || !isset($data['login']) || !isset($data['mdp'])) {
+            $response = $response->withStatus(400)
+                ->withHeader('Content-Type', 'application/json');
+            $response->getBody()->write(json_encode(['error' => 'Données de connexion manquantes']));
+            return $response;
+        }
+
+        $login = $data['login'];
+        $mdp = $data['mdp'];
+        $id = $db->loginExist($login, $mdp);
+        $fonction = $db->checkId($id);
+
+        $expTime = time() + 3600;
+
+        if ($id) {
+            $response = $response->withHeader('Content-Type', 'application/json');
+            $response->getBody()->write(json_encode(['token' => createJWT($expTime, $id, $fonction), 'fonction' => $fonction]));
+        } else {
+            $response = $response->withStatus(401)
+                ->withHeader('Content-Type', 'application/json');
+            $response->getBody()->write(json_encode(['error' => 'Identifiants invalides']));
+        }
         return $response;
-    })->add($checkToken);
+    });
 
 
     $app->get('/get/{table}', function (Request $request, Response $response, $args) use ($db) {
@@ -107,114 +123,101 @@ return function (App $app, Database $db) use ($checkToken) {
             $response->getBody()->write(json_encode(['Error' => "vous n'avez pas les droits"]));
         }
 
-
-
-
-
         return $response->withHeader('Content-Type', 'application/json');
     })->add($checkToken);
-
-
-    $app->get('/get/{table}/{id}', function (Request $request, Response $response, $args) use ($db) {
-        $fonction = $request->getAttribute('JWT')['fonction'];
-        $id = $args['id'];
-        $jwtId = $request->getAttribute('JWT')['id'];
-        $table = $args['table'];
-
-        if (isset(ACCES[$fonction]) && in_array($table, ACCES[$fonction])) {
-            if ($fonction == 'patient') {
-                $reponsePatient = $db->getVisitesPatient($id, $table);
-                $ids = array_column($reponsePatient, 'id');
-                if (!empty($reponsePatient) && in_array($jwtId, $ids)) {
-
-                    $response->getBody()->write(json_encode($reponsePatient, JSON_PRETTY_PRINT));
-                } else {
-                    $response = $response->withStatus(403);
-                    $response->getBody()->write(json_encode(['Error' => "vous n'avez pas les droits ou ça n'existe pas"]));
-                }
-
-            } elseif ($fonction == 'infirmiere') {
-                $reponseInfirmiere = $db->getVisitesInfirmiere($id, $table);
-                $ids = array_column($reponseInfirmiere, 'id');
-                if (!empty($reponseInfirmiere) && in_array($jwtId, $ids)) {
-                    $response->getBody()->write(json_encode($reponseInfirmiere, JSON_PRETTY_PRINT));
-                } else {
-                    $response = $response->withStatus(403);
-                    $response->getBody()->write(json_encode(['Error' => "vous n'avez pas les droits ou ça n'existe pas"]));
-                }
-
-            } else {
-                $response->getBody()->write(json_encode($db->getLigne($table, $id), JSON_PRETTY_PRINT));
-            }
-        } else {
-            $response = $response->withStatus(403)->withHeader('Content-Type', 'application/json');
-            $response->getBody()->write(json_encode(['Error' => "vous n'avez pas les droits ou ça n'existe pas"]));
-        }
-
-        return $response->withHeader('Content-Type', 'application/json');
-    })->add($checkToken);
-
 
     $app->post('/post/{table}', function (Request $request, Response $response, $args) use ($db) {
         $data = (array) $request->getParsedBody();
-        $responseData = $db->post($args["table"], $data);
+        $jwt = $request->getAttribute('JWT');
+        $fonction = $jwt['fonction'];
+        $jwtId = $jwt['id'];
+        $table = $args['table'];
+
+        if ($fonction === 'infirmiere' || $fonction === 'patient') {
+            if ($table == "visite") {
+                if (!isset($data['infirmiere']) || $data['infirmiere'] != $jwtId || $fonction === 'patient') {
+                    $response = $response->withStatus(403)
+                        ->withHeader('Content-Type', 'application/json');
+                    $response->getBody()->write(json_encode(['error' => "Vous n'avez pas les droits pour poster dans cette table"]));
+                    return $response;
+                }
+            } else {
+                $response = $response->withStatus(403)
+                    ->withHeader('Content-Type', 'application/json');
+                $response->getBody()->write(json_encode(['error' => "Vous n'avez pas les droits pour poster dans cette table"]));
+                return $response;
+            }
+        }
+
+        $responseData = $db->post($table, $data);
         if ($responseData) {
             $response->getBody()->write("Accepted");
         } else {
-            $response->getBody()->write("failed");
+            $response->getBody()->write("Failed");
         }
         return $response;
     })->add($checkToken);
 
-
-    $app->delete('/delete/{table}/{id}', function (Request $request, Response $response, $args) use ($db) {
-        if ($db->deleteLigne($args['table'], $args['id'])) {
-            $response->getBody()->write("Accepted");
-        } else {
-            $response->getBody()->write("failed");
-        }
-        return $response;
-    })->add($checkToken);
-
-
-    $app->put('/put/{table}/{id}', function (Request $request, Response $response, $args) use ($db) {
+    $app->delete('/delete/{table}', function (Request $request, Response $response, $args) use ($db) {
         $data = (array) $request->getParsedBody();
-        if ($db->put($args['table'], $args['id'], $data)) {
+        $jwt = $request->getAttribute('JWT');
+        $fonction = $jwt['fonction'];
+        $jwtId = $jwt['id'];
+        $table = $args['table'];
+        $id = $data['id'];
+
+
+        if ($fonction === 'infirmiere' || $fonction === 'patient') {
+            if ($table == "visite") {
+                if (!isset($data['infirmiere']) || $data['infirmiere'] != $jwtId || $fonction === 'patient') {
+                    $response = $response->withStatus(403)
+                        ->withHeader('Content-Type', 'application/json');
+                    $response->getBody()->write(json_encode(['error' => "Vous n'avez pas les droits de suppression dans cette table"]));
+                    return $response;
+                }
+            } else {
+                $response = $response->withStatus(403)
+                    ->withHeader('Content-Type', 'application/json');
+                $response->getBody()->write(json_encode(['error' => "Vous n'avez pas les droits de suppression dans cette table"]));
+                return $response;
+            }
+        }
+
+        if ($db->deleteLigne($table, $id)) {
             $response->getBody()->write("Accepted");
         } else {
-            $response->getBody()->write("failed");
+            $response->getBody()->write("Failed");
+        }
+        return $response;
+    })->add($checkToken);
+
+    $app->put('/put/{table}', function (Request $request, Response $response, $args) use ($db) {
+        $data = (array) $request->getParsedBody();
+        $jwt = $request->getAttribute('JWT');
+        $fonction = $jwt['fonction'];
+        $jwtId = $jwt['id'];
+        $table = $args['table'];
+        $id = $data['id'];
+
+        if ($fonction === 'infirmiere' || $fonction === 'patient') {
+            if ($table = "visite") {
+                if ($db->isPostByThisInfi($id, $jwtId) == false || $fonction === 'patient') {
+                    $response = $response->withStatus(403)
+                        ->withHeader('Content-Type', 'application/json');
+                    $response->getBody()->write(json_encode(['error' => "Vous n'avez pas les droits de modification pour cette table"]));
+                    return $response;
+                }
+            }
+        }
+
+        if ($db->put($table, $id, $data)) {
+            $response->getBody()->write("Accepted");
+        } else {
+            $response->getBody()->write("Failed");
         }
         return $response;
     })->add($checkToken);
 
 
-    $app->post('/login', function (Request $request, Response $response, $args) use ($db) {
-        $data = $request->getParsedBody();
-
-        if (is_null($data) || !isset($data['login']) || !isset($data['mdp'])) {
-            $response = $response->withStatus(400)
-                ->withHeader('Content-Type', 'application/json');
-            $response->getBody()->write(json_encode(['error' => 'Données de connexion manquantes']));
-            return $response;
-        }
-
-        $login = $data['login'];
-        $mdp = $data['mdp'];
-        $id = $db->loginExist($login, $mdp);
-        $fonction = $db->checkId($id);
-
-
-        $expTime = time() + 3600;
-
-        if ($id) {
-            $response = $response->withHeader('Content-Type', 'application/json');
-            $response->getBody()->write(json_encode(['token' => createJWT($expTime, $id, $fonction), 'fonction' => $fonction]));
-        } else {
-            $response = $response->withStatus(401)
-                ->withHeader('Content-Type', 'application/json');
-            $response->getBody()->write(json_encode(['error' => 'Identifiants invalides']));
-        }
-        return $response;
-    });
 };
 

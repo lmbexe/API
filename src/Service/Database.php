@@ -110,7 +110,6 @@ class Database
                 $query .= ":$key,";
             }
             $query = substr($query, 0, -1) . " WHERE id = $id;";
-            echo $query;
             $req = $this->connection->prepare($query);
             $req->execute($params);
             $vRetour = true;
@@ -132,7 +131,6 @@ class Database
                 $query .= ":$key,";
             }
             $query = substr($query, 0, -1) . ");";
-            echo $query;
             $req = $this->connection->prepare($query);
             $req->execute($params);
             $vRetour = true;
@@ -273,6 +271,24 @@ class Database
         } catch (Exception $e) {
             echo "erreur : $e";
             $vRetour = false;
+        }
+        return $vRetour;
+    }
+
+    public function isPostByThisInfi($idVisite, $idInf)
+    {
+        $vRetour = false;
+        try {
+            $query = "SELECT * FROM visite WHERE id = ?";
+            $req = $this->connection->prepare($query);
+            $req->execute([$idVisite]);
+            $result = $req->fetch(PDO::FETCH_ASSOC);
+            if ($result['infirmiere'] === $idInf) {
+                $vRetour = true;
+            }
+
+        } catch (Exception $e) {
+            echo "Error : $e";
         }
         return $vRetour;
     }
