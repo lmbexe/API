@@ -79,9 +79,7 @@ Lancer Postman, se connecter puis
   }
   ```
 - **Réponse :**
-  ```json
  Accepted
-  ```
 
 #### Autres routes
 
@@ -99,7 +97,7 @@ Lancer Postman, se connecter puis
 ## Dépendances
 
 - [Slim Framework](https://www.slimframework.com/)
-- [PHP-DI](https://php-di.org/) (si utilisé)
+- [PHP-DI](https://php-di.org/)
 - [Monolog](https://seldaek.github.io/monolog/) (pour les logs)
 - Autres selon votre `composer.json`
 
