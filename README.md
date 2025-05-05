@@ -98,8 +98,17 @@ Lancer Postman, se connecter puis
 
 - [Slim Framework](https://www.slimframework.com/)
 - [PHP-DI](https://php-di.org/)
-- [Monolog](https://seldaek.github.io/monolog/) (pour les logs)
-- Autres selon votre `composer.json`
+
+```json
+"require": {
+        "slim/slim": "4.*",
+        "slim/psr7": "^1.7",
+        "selective/basepath": "^2.2",
+        "firebase/php-jwt": "^6.11"
+    }
+```
+
+
 
 
 
